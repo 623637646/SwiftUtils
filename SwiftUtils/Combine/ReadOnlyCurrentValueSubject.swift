@@ -8,6 +8,8 @@
 import Foundation
 import Combine
 
+
+/// CurrentValueSubject is readable and writable, ReadOnlyCurrentValueSubjectis only writable in the current module. It's not writable outside the current module.
 final public class ReadOnlyCurrentValueSubject<Output, Failure> : Publisher where Failure : Error {
     
     private let currentValueSubject: CurrentValueSubject<Output, Failure>

@@ -8,6 +8,8 @@
 import Foundation
 
 /// Cancellable withCheckedThrowingContinuation
+/// The normal swift concurrency API withCheckedThrowingContinuation  will not stop when the Task is cancelled.
+/// This API  withCheckedThrowingCancellableContinuation will throw CancellationError when the Task is cancelled.
 /// - Parameters:
 ///   - function: A string identifying the declaration that is the notional
 ///     source for the continuation, used to identify the continuation in
