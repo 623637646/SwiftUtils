@@ -65,8 +65,10 @@ public actor CancellableCheckedContinuation<T, E> : Sendable where E : Error {
             self.state = .thrown(error: error)
         case .returned:
             assertionFailure("Call bindCheckedContinuation after returned")
+            break
         case .thrown:
             assertionFailure("Call bindCheckedContinuation after thrown")
+            break
         }
     }
     
