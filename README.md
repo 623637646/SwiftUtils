@@ -1,6 +1,6 @@
 # SwiftUtils
 
-## [Race](blob/master/SwiftUtils/Concurrency/Race.swift)
+## [Race](Concurrency/Race.swift)
 Race for async operations. First finished operation wins, cancel the other operations.
 
 ## Timeout
