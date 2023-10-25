@@ -18,6 +18,7 @@
 		A0BCFE252AE8F45A00047CBE /* TimeoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0BCFE212AE8F45A00047CBE /* TimeoutTests.swift */; };
 		A0BCFE262AE8F45A00047CBE /* RaceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0BCFE222AE8F45A00047CBE /* RaceTests.swift */; };
 		A0BCFE272AE8F45A00047CBE /* CancellableContinuationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0BCFE232AE8F45A00047CBE /* CancellableContinuationTests.swift */; };
+		A0BCFE2B2AE8F75400047CBE /* CodableExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0BCFE2A2AE8F75400047CBE /* CodableExtension.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -43,6 +44,7 @@
 		A0BCFE212AE8F45A00047CBE /* TimeoutTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TimeoutTests.swift; sourceTree = "<group>"; };
 		A0BCFE222AE8F45A00047CBE /* RaceTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RaceTests.swift; sourceTree = "<group>"; };
 		A0BCFE232AE8F45A00047CBE /* CancellableContinuationTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CancellableContinuationTests.swift; sourceTree = "<group>"; };
+		A0BCFE2A2AE8F75400047CBE /* CodableExtension.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CodableExtension.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -88,6 +90,7 @@
 				A0BCFDFF2AE8F3E400047CBE /* SwiftUtils.h */,
 				A0BCFE142AE8F42100047CBE /* Combine */,
 				A0BCFE172AE8F42200047CBE /* Concurrency */,
+				A0BCFE2A2AE8F75400047CBE /* CodableExtension.swift */,
 			);
 			path = SwiftUtils;
 			sourceTree = "<group>";
@@ -233,6 +236,7 @@
 			files = (
 				A0BCFE1E2AE8F42200047CBE /* Race.swift in Sources */,
 				A0BCFE1C2AE8F42200047CBE /* PublisherExtension.swift in Sources */,
+				A0BCFE2B2AE8F75400047CBE /* CodableExtension.swift in Sources */,
 				A0BCFE1B2AE8F42200047CBE /* ReadOnlyCurrentValueSubject.swift in Sources */,
 				A0BCFE1F2AE8F42200047CBE /* CancellableContinuation.swift in Sources */,
 				A0BCFE1D2AE8F42200047CBE /* Timeout.swift in Sources */,
