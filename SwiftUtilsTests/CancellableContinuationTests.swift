@@ -103,4 +103,31 @@ final class CancellableContinuationTests: XCTestCase {
         try await Task.sleep(nanoseconds: UInt64(0.5 * 1_000_000_000))
     }
     
+    /// Test: cancel -> bind -> throwing
+    func testCancelBindThrowing() async throws {
+        let expectation1 = self.expectation(description: "started")
+        let expectation2 = self.expectation(description: "finished")
+        let task = Task {
+            do {
+                expectation1.fulfill()
+                let _: Void = try await withCheckedThrowingCancellableContinuation { continuation in
+                    Thread.sleep(forTimeInterval: 0.2)
+                    Task {
+                        try await Task.sleep(nanoseconds: UInt64(0.1 * 1_000_000_000))
+                        continuation.resume(throwing: NSError(domain: "dd", code: 87))
+                    }
+                }
+                XCTFail()
+            } catch is CancellationError {
+                expectation2.fulfill()
+            } catch {
+                XCTFail()
+            }
+        }
+        try await Task.sleep(nanoseconds: UInt64(0.1 * 1_000_000_000))
+        task.cancel()
+        await self.fulfillment(of: [expectation1, expectation2])
+        try await Task.sleep(nanoseconds: UInt64(0.5 * 1_000_000_000))
+    }
+    
 }

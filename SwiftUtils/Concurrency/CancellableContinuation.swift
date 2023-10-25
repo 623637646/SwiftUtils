@@ -152,7 +152,7 @@ public actor CancellableCheckedContinuation<T, E> : Sendable where E : Error {
             case .returning(result: _):
                 // call `returning` first, then call `cancel`
                 break
-            case .throwing(error: _):
+            case .throwing:
                 // call `throwing` first, then call `cancel`
                 break
             case .returned:
@@ -189,10 +189,16 @@ public actor CancellableCheckedContinuation<T, E> : Sendable where E : Error {
                 // returned, then call `throwing`
                 assertionFailure("returned, then call `throwing`")
                 break
-            case .thrown:
-                // thrown, then call `throwing`
-                assertionFailure("thrown, then call `throwing`")
-                break
+            case .thrown(error: let errorInState):
+                switch errorInState {
+                case is CancellationError:
+                    // cancelled, then call `throwing`
+                    break
+                default:
+                    // thrown, then call `throwing`
+                    assertionFailure("thrown, then call `throwing`")
+                    break
+                }
             }
         }
     }
