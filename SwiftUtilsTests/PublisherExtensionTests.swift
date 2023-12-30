@@ -59,4 +59,261 @@ final class PublisherExtensionTests: XCTestCase {
         XCTAssertEqual(result4, nil)
     }
     
+    func testFlatMapAndDropUntilLastCompleted() async throws {
+        let subject = PassthroughSubject<Int, Never>()
+        Task {
+            for i in 0 ... 10 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                subject.send(i)
+            }
+            subject.send(completion: .finished)
+        }
+        let publisher = subject.flatMapAndDropUntilLastCompleted { i in
+            let subject = PassthroughSubject<Int, Never>()
+            Task {
+                try await Task.sleep(nanoseconds: UInt64(15_000_000))
+                subject.send(i)
+                subject.send(-i)
+                subject.send(completion: .finished)
+            }
+            return subject
+        }
+        var result = [Int]()
+        for await value in publisher.values {
+            result.append(value)
+        }
+        XCTAssertEqual(result, [0, 0, 2, -2, 4, -4, 6, -6, 8, -8, 10, -10])
+    }
+    
+    func testFlatMapAndDropUntilLastCompletedFailure() async throws {
+        let subject = PassthroughSubject<Int, NSError>()
+        Task {
+            for i in 0 ... 10 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                subject.send(i)
+            }
+            subject.send(completion: .finished)
+        }
+        let publisher = subject.flatMapAndDropUntilLastCompleted { i in
+            let subject = PassthroughSubject<Int, NSError>()
+            Task {
+                try await Task.sleep(nanoseconds: UInt64(15_000_000))
+                subject.send(i)
+                try await Task.sleep(nanoseconds: UInt64(1_000_000))
+                subject.send(-i)
+                try await Task.sleep(nanoseconds: UInt64(1_000_000))
+                if i == 4 {
+                    subject.send(completion: .failure(NSError(domain: "cc", code: 78)))
+                } else {
+                    subject.send(completion: .finished)
+                }
+            }
+            return subject
+        }
+        var result = [Int]()
+        do {
+            for try await value in publisher.values {
+                result.append(value)
+            }
+        } catch {
+            XCTAssertEqual(result, [0, 0, 2, -2, 4, -4])
+            XCTAssertEqual(error as NSError, NSError(domain: "cc", code: 78))
+        }
+    }
+    
+    func testDropUntilTaskCompleted() async throws {
+        let subject = PassthroughSubject<Int, Never>()
+        Task {
+            for i in 0 ... 10 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                subject.send(i)
+            }
+            subject.send(completion: .finished)
+        }
+        let publisher = subject.dropUntilTaskCompleted { i in
+            try! await Task.sleep(nanoseconds: UInt64(15_000_000))
+            return i
+        }
+        var result = [Int]()
+        for await value in publisher.values {
+            result.append(value)
+        }
+        XCTAssertEqual(result, [0, 2, 4, 6, 8, 10])
+    }
+    
+    func testDropUntilTaskCompletedCancelled() throws {
+        let subject = PassthroughSubject<Int, Never>()
+        Task {
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(0)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(1)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(2)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(3)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(completion: .finished)
+        }
+        let exp3rd = expectation(description: "3rd is run")
+        let publisher = subject.dropUntilTaskCompleted { i in
+            switch i {
+            case 0:
+                try! await Task.sleep(nanoseconds: UInt64(15_000_000))
+                break
+            case 1:
+                XCTFail()
+                break
+            case 2:
+                break
+            case 3:
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(10_000_000))
+                    XCTFail()
+                } catch {
+                    XCTAssertEqual(error is CancellationError, true)
+                }
+                XCTAssertEqual(Task.isCancelled, true)
+                exp3rd.fulfill()
+                break
+            default :
+                break
+            }
+            return i
+        }
+        
+        var result = [Int]()
+        var cancellable: AnyCancellable?
+        let expSink = expectation(description: "sink finish or cancelled")
+        cancellable = publisher.handleEvents(receiveCancel: {
+            expSink.fulfill()
+        }).sink(receiveCompletion: { completion in
+            switch completion {
+            case .finished:
+                expSink.fulfill()
+            }
+        }, receiveValue: { value in
+            result.append(value)
+            if value == 2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.015, execute: {
+                    cancellable?.cancel()
+                })
+            }
+        })
+        waitForExpectations(timeout: 3)
+        XCTAssertEqual(result, [0, 2])
+    }
+    
+    func testDropUntilThrowingTaskCompleted() async throws {
+        let subject = PassthroughSubject<Int, Error>()
+        Task {
+            for i in 0 ... 10 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                subject.send(i)
+            }
+            subject.send(completion: .finished)
+        }
+        let publisher = subject.dropUntilThrowingTaskCompleted { i in
+            try await Task.sleep(nanoseconds: UInt64(15_000_000))
+            return i
+        }
+        var result = [Int]()
+        for try await value in publisher.values {
+            result.append(value)
+        }
+        XCTAssertEqual(result, [0, 2, 4, 6, 8, 10])
+    }
+    
+    func testDropUntilThrowingTaskCompletedFailure() async throws {
+        let subject = PassthroughSubject<Int, Error>()
+        Task {
+            for i in 0 ... 10 {
+                try await Task.sleep(nanoseconds: 10_000_000)
+                subject.send(i)
+            }
+            subject.send(completion: .finished)
+        }
+        let publisher = subject.dropUntilThrowingTaskCompleted { i in
+            try await Task.sleep(nanoseconds: UInt64(15_000_000))
+            if i == 4 {
+                throw NSError(domain: "kk", code: 889)
+            }
+            return i
+        }
+        var result = [Int]()
+        do {
+            for try await value in publisher.values {
+                result.append(value)
+            }
+        } catch {
+            XCTAssertEqual(result, [0, 2])
+            XCTAssertEqual(error as NSError, NSError(domain: "kk", code: 889))
+        }
+    }
+    
+    func testDropUntilThrowingTaskCompletedCancelled() throws {
+        let subject = PassthroughSubject<Int, Error>()
+        Task {
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(0)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(1)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(2)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(3)
+            try await Task.sleep(nanoseconds: 10_000_000)
+            subject.send(completion: .finished)
+        }
+        let exp3rd = expectation(description: "3rd is run")
+        let publisher = subject.dropUntilThrowingTaskCompleted { i in
+            switch i {
+            case 0:
+                try await Task.sleep(nanoseconds: UInt64(15_000_000))
+                break
+            case 1:
+                XCTFail()
+                break
+            case 2:
+                break
+            case 3:
+                do {
+                    try await Task.sleep(nanoseconds: UInt64(10_000_000))
+                    XCTFail()
+                } catch {
+                    XCTAssertEqual(error is CancellationError, true)
+                }
+                XCTAssertEqual(Task.isCancelled, true)
+                exp3rd.fulfill()
+                break
+            default :
+                break
+            }
+            return i
+        }
+        
+        var result = [Int]()
+        var cancellable: AnyCancellable?
+        let expSink = expectation(description: "sink finish or cancelled")
+        cancellable = publisher.handleEvents(receiveCancel: {
+            expSink.fulfill()
+        }).sink(receiveCompletion: { completion in
+            switch completion {
+            case .finished:
+                expSink.fulfill()
+            case .failure(_):
+                XCTFail()
+            }
+        }, receiveValue: { value in
+            result.append(value)
+            if value == 2 {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.015, execute: {
+                    cancellable?.cancel()
+                })
+            }
+        })
+        waitForExpectations(timeout: 3)
+        XCTAssertEqual(result, [0, 2])
+    }
+    
 }

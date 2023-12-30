@@ -52,4 +52,60 @@ extension Publisher {
     public func next() async throws -> Output? {
         try await self.waitUntilStop { $0 }
     }
+    
+    /// Applies a transformation to each element emitted by the publisher, but drops all subsequent elements until the last transformation completes.
+    /// - Parameter transform: A closure that takes an element emitted by the publisher and returns a new publisher.
+    /// - Returns: A publisher that emits elements from the last completed transformation.
+    public func flatMapAndDropUntilLastCompleted<P>(_ transform: @escaping (Self.Output) -> P) -> AnyPublisher<P.Output, P.Failure> where P: Publisher, Self.Failure == P.Failure {
+        var drop = false
+        return self.flatMap { output in
+            if drop {
+                return Empty<P.Output, P.Failure>().eraseToAnyPublisher()
+            } else {
+                drop = true
+                return transform(output).handleEvents(receiveCompletion: { _ in
+                    drop = false
+                }).eraseToAnyPublisher()
+            }
+        }.eraseToAnyPublisher()
+    }
+    
+    
+    ///  Drops elements emitted by the publisher until the asynchronous task associated with each element is completed.
+    /// - Parameter task: A closure that takes an element emitted by the publisher and returns an asynchronous task.
+    /// - Returns: A publisher that emits the results of the completed tasks.
+    public func dropUntilTaskCompleted<T>(_ task: @escaping (Self.Output) async -> T) -> AnyPublisher<T, Self.Failure> {
+        flatMapAndDropUntilLastCompleted { output in
+            var token: Task<(), Never>?
+            return Future<T, Self.Failure> { promise in
+                token = Task {
+                    let result = await task(output)
+                    promise(.success(result))
+                }
+            }.handleEvents(receiveCancel: {
+                token?.cancel()
+            })
+        }
+    }
+
+    ///  Drops elements emitted by the publisher until the asynchronous task associated with each element is completed or throws.
+    /// - Parameter task: A closure that takes an element emitted by the publisher and returns an asynchronous task.
+    /// - Returns: A publisher that emits the results of the completed tasks.
+    public func dropUntilThrowingTaskCompleted<T>(_ task: @escaping (Self.Output) async throws -> T) -> AnyPublisher<T, Error> where Self.Failure == Error {
+        flatMapAndDropUntilLastCompleted { output in
+            var token: Task<(), Never>?
+            return Future<T, Self.Failure> { promise in
+                token = Task {
+                    do {
+                        let result = try await task(output)
+                        promise(.success(result))
+                    } catch {
+                        promise(.failure(error))
+                    }
+                }
+            }.handleEvents(receiveCancel: {
+                token?.cancel()
+            })
+        }
+    }
 }
