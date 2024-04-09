@@ -1,6 +1,6 @@
 //
 //  Timeout.swift
-//  OKBase
+//  SwiftUtils
 //
 //  Created by Wang Ya on 16/10/23.
 //
