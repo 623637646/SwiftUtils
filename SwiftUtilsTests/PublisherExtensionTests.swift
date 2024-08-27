@@ -316,4 +316,91 @@ final class PublisherExtensionTests: XCTestCase {
         XCTAssertEqual(result, [0, 2])
     }
     
+    func testCombineLatestArrayNormal() {
+        let obs1 = PassthroughSubject<Int,Never>()
+        let obs2 = PassthroughSubject<Int,Never>()
+        let obs3 = PassthroughSubject<Int,Never>()
+        
+        let arr = [obs1, obs2, obs3]
+        let pub = Publishers.CombineLatestArray(publishers: arr)
+        
+        var lastValue: [Int]?
+        var completion: Subscribers.Completion<Never>?
+        
+        let cancellable = pub.sink(receiveCompletion: { r in
+            completion = r
+        }, receiveValue: { value in
+            lastValue = value
+        })
+        _ = cancellable
+        
+        XCTAssertEqual(lastValue, nil)
+        XCTAssertEqual(completion, nil)
+        
+        obs1.send(5)
+        XCTAssertEqual(lastValue, nil)
+        XCTAssertEqual(completion, nil)
+        
+        obs2.send(10)
+        XCTAssertEqual(lastValue, nil)
+        XCTAssertEqual(completion, nil)
+        
+        obs3.send(1)
+        XCTAssertEqual(lastValue, [5, 10, 1])
+        XCTAssertEqual(completion, nil)
+        
+        obs1.send(12)
+        XCTAssertEqual(lastValue, [12, 10, 1])
+        XCTAssertEqual(completion, nil)
+        
+        obs3.send(20)
+        XCTAssertEqual(lastValue, [12, 10, 20])
+        XCTAssertEqual(completion, nil)
+    }
+    
+    func testCombineLatestArrayEmpty() {
+        let pub = Publishers.CombineLatestArray(publishers: [PassthroughSubject<Int,Never>]())
+        
+        var lastValue: [Int]?
+        var completion: Subscribers.Completion<Never>?
+        
+        let cancellable = pub.sink(receiveCompletion: { r in
+            completion = r
+        }, receiveValue: { value in
+            lastValue = value
+        })
+        _ = cancellable
+        
+        XCTAssertEqual(lastValue, nil)
+        XCTAssertEqual(completion, .finished)
+    }
+    
+    func testCombineLatestArrayOne() {
+        let obs1 = PassthroughSubject<Int,Never>()
+        
+        let arr = [obs1]
+        let pub = Publishers.CombineLatestArray(publishers: arr)
+        
+        var lastValue: [Int]?
+        var completion: Subscribers.Completion<Never>?
+        
+        let cancellable = pub.sink(receiveCompletion: { r in
+            completion = r
+        }, receiveValue: { value in
+            lastValue = value
+        })
+        _ = cancellable
+        
+        XCTAssertEqual(lastValue, nil)
+        XCTAssertEqual(completion, nil)
+        
+        obs1.send(5)
+        XCTAssertEqual(lastValue, [5])
+        XCTAssertEqual(completion, nil)
+        
+        obs1.send(12)
+        XCTAssertEqual(lastValue, [12])
+        XCTAssertEqual(completion, nil)
+    }
+    
 }

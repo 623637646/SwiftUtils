@@ -109,3 +109,33 @@ extension Publisher {
         }
     }
 }
+
+extension Publishers {
+    
+    /// `CombineLatestArray` is a custom Publisher that takes an array of Publishers and combines their latest outputs into a single array. Refer to: https://stackoverflow.com/a/67099668/9315497
+    public struct CombineLatestArray<P>: Publisher where P: Publisher {
+        public typealias Output = [P.Output]
+        public typealias Failure = P.Failure
+        
+        let publishers: [P]
+        
+        init(publishers: [P]) {
+            self.publishers = publishers
+        }
+        
+        public func receive<S>(subscriber: S) where S : Subscriber, P.Failure == S.Failure, [P.Output] == S.Input {
+            guard !publishers.isEmpty else {
+                subscriber.receive(completion: .finished)
+                return
+            }
+            publishers.dropFirst().reduce(into: publishers[0].map{[$0]}.eraseToAnyPublisher()) {
+                res, ob in
+                res = res.combineLatest(ob) {
+                    i1, i2 -> [P.Output] in
+                    return i1 + [i2]
+                }.eraseToAnyPublisher()
+            }.subscribe(subscriber)
+        }
+    }
+    
+}
