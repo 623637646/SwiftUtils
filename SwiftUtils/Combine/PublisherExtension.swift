@@ -108,6 +108,17 @@ extension Publisher {
             })
         }
     }
+
+    /// Swift Combine is leaking when using API subscribe<S>(_ subject: S) -> AnyCancellable. It may be a Combine bug.
+    /// This is a workaround to fix it.
+    /// For more info: https://stackoverflow.com/a/78927370/9315497
+    public func subscribe<S>(_ subject: S) -> AnyCancellable where S : Subject, Self.Failure == S.Failure, Self.Output == S.Output {
+        return self.sink { completion in
+            subject.send(completion: completion)
+        } receiveValue: { value in
+            subject.send(value)
+        }
+    }
 }
 
 extension Publishers {
